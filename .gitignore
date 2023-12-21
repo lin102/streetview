@@ -21,3 +21,6 @@ dist/
 
 # JetBrains IDEs
 .idea/
+
+
+data/gsv/*

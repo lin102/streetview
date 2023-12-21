@@ -1,0 +1,35 @@
+import warnings
+warnings.filterwarnings("ignore")
+import osmnx as ox
+import pandas as pd
+import geopandas as gpd
+import networkx
+from shapely.geometry import Point, LineString, Polygon
+import spaghetti
+
+Chicago=ox.graph_from_place(('Nanjing, China'),network_type='drive')
+x_values = networkx.get_node_attributes (Chicago, 'x')
+y_values = networkx.get_node_attributes (Chicago, 'y')
+graph_with_geometries = list (Chicago.edges (data=True))
+for e in graph_with_geometries:
+    if not 'geometry' in e[2]:
+        e[2]['geometry'] = LineString ([Point (x_values[e[0]], y_values[e[0]]), Point (x_values[e[1]], y_values[e[1]])])
+graph_with_geometries[0:4]
+road_lines = [x[2] for x in graph_with_geometries]
+roads_gdf = gpd.GeoDataFrame (pd.DataFrame (road_lines)).set_crs(epsg=4326,inplace=True )
+roads_gdf=roads_gdf.to_crs(crs=3857)
+roads_gdf=roads_gdf.drop_duplicates(subset=['length'], keep='last')
+df_x=pd.DataFrame(x_values.items(), columns=['id', 'Longitude'])
+df_y=pd.DataFrame(y_values.items(), columns=['id', 'Latitude'])
+df=pd.merge(df_x,df_y,on='id')
+Intersections = gpd.GeoDataFrame (geometry = [Point(xy) for xy in zip (df.Longitude, df.Latitude)])
+Intersections = Intersections.set_crs(epsg=4326,inplace=True ).to_crs(crs=3857)
+
+
+def split_road(distance):
+    ntw = spaghetti.Network(in_data=roads_gdf)
+    n200 = ntw.split_arcs(distance)
+    vtx200_df, arc200_df = spaghetti.element_as_gdf(n200, vertices=True, arcs=True)
+    input_path = '/data/gent/442/vsc44215/DICE_BIKE/'
+    Point = vtx200_df[['geometry']]
+    return Point
